@@ -5,7 +5,7 @@ import axios from 'axios';
 import Link from 'next/link';
 import PostForm from '../components/PostForm';
 
-// Helper to format timestamp to relative time string
+// Helper function to convert date string to "x mins ago", etc.
 function timeAgo(dateString) {
   const date = new Date(dateString);
   const now = new Date();
@@ -27,31 +27,30 @@ export default function Home() {
   const [user, setUser] = useState(null);
   const [error, setError] = useState(null);
 
-  // Use backend URL from env or fallback
+  // Use backend URL from .env variable or fallback to localhost
   const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
 
   // Fetch posts from backend
   const fetchPosts = async () => {
     try {
-      setError(null);
+      setError(null); // Clear previous errors
       const res = await axios.get(`${API_BASE}/posts`);
       setPosts(res.data);
     } catch (err) {
+      console.error('Error fetching posts:', err);
       setError('Failed to load posts.');
-      console.error(err);
     }
   };
 
-  // Fetch user info from localStorage token or saved user info
+  // Fetch logged-in user info based on token or localStorage
   const fetchUserInfo = (token) => {
     try {
       if (!token) {
         setUser(null);
         return;
       }
-      const payload = JSON.parse(atob(token.split('.')[1]));
-      // If you store user name in token or localStorage, update accordingly
-      setUser({ name: payload.name || 'User', id: payload.id || null });
+      const decoded = JSON.parse(atob(token.split('.')[1]));
+      setUser({ name: decoded.name || 'User', id: decoded.id || null });
     } catch {
       setUser(null);
     }
@@ -138,10 +137,13 @@ export default function Home() {
           📢 Recent Posts:
         </h2>
 
+        {/* Show error if fetch failed */}
         {error && <p style={{ color: 'red' }}>{error}</p>}
 
+        {/* Show no posts message if none */}
         {!error && posts.length === 0 && <p>No posts yet.</p>}
 
+        {/* Render posts */}
         {!error && posts.length > 0 && posts.map((post) => (
           <div
             key={post.id}
