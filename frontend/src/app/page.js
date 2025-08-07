@@ -4,9 +4,8 @@ import { useEffect, useState } from 'react';
 import axios from 'axios';
 import Link from 'next/link';
 import PostForm from '../components/PostForm';
-import PostCard from '../components/PostCard';
 
-// Helper function to format timestamps to "x mins ago", "y hours ago"
+// Helper to format timestamp to relative time string
 function timeAgo(dateString) {
   const date = new Date(dateString);
   const now = new Date();
@@ -26,28 +25,34 @@ export default function Home() {
   const [posts, setPosts] = useState([]);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [user, setUser] = useState(null);
+  const [error, setError] = useState(null);
+
+  // Use backend URL from env or fallback
+  const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
 
   // Fetch posts from backend
   const fetchPosts = async () => {
     try {
-      const res = await axios.get('http://localhost:5000/posts');
+      setError(null);
+      const res = await axios.get(`${API_BASE}/posts`);
       setPosts(res.data);
-    } catch {
-      alert('Failed to load posts');
+    } catch (err) {
+      setError('Failed to load posts.');
+      console.error(err);
     }
   };
 
-  // Fetch logged-in user info from stored token (optional enhancement)
-  const fetchUserInfo = async (token) => {
-    // Since user data is returned on login API, here we assume saved info in localStorage
-    // If you store user info in localStorage, retrieve it here; else decode token or add API call.
-    // For simplicity, let's decode token manually to get name (or you can store user info separately on login)
-    const payload = token ? JSON.parse(atob(token.split('.')[1])) : null;
-    if (payload) {
-      // Here just set a placeholder name (you can improve to fetch user details from backend)
-      setUser({ name: `User` }); // fallback placeholder
-      // Better approach: store user info on login and get from localStorage
-    } else {
+  // Fetch user info from localStorage token or saved user info
+  const fetchUserInfo = (token) => {
+    try {
+      if (!token) {
+        setUser(null);
+        return;
+      }
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      // If you store user name in token or localStorage, update accordingly
+      setUser({ name: payload.name || 'User', id: payload.id || null });
+    } catch {
       setUser(null);
     }
   };
@@ -58,18 +63,18 @@ export default function Home() {
     const token = localStorage.getItem('token');
     setIsLoggedIn(!!token);
 
-    // Also retrieve user info (stored or decoded token)
-    // For example, if user info is stored as JSON string in localStorage:
     const storedUser = localStorage.getItem('user');
     if (storedUser) {
-      setUser(JSON.parse(storedUser));
+      try {
+        setUser(JSON.parse(storedUser));
+      } catch {
+        fetchUserInfo(token);
+      }
     } else {
-      // fallback: you can fetch or decode token if needed
       fetchUserInfo(token);
     }
   }, []);
 
-  // Render Greeting + Create Post form + Posts feed + View Profile button
   return (
     <div
       style={{
@@ -118,7 +123,7 @@ export default function Home() {
         )}
       </section>
 
-      {/* Recent Posts */}
+      {/* Posts Feed */}
       <section>
         <h2
           style={{
@@ -132,45 +137,46 @@ export default function Home() {
         >
           📢 Recent Posts:
         </h2>
-        {posts.length === 0 ? (
-          <p>No posts yet.</p>
-        ) : (
-          posts.map((post) => (
+
+        {error && <p style={{ color: 'red' }}>{error}</p>}
+
+        {!error && posts.length === 0 && <p>No posts yet.</p>}
+
+        {!error && posts.length > 0 && posts.map((post) => (
+          <div
+            key={post.id}
+            style={{
+              marginBottom: 24,
+              paddingBottom: 10,
+              borderBottom: '1px solid #eee',
+              background: '#fff',
+              borderRadius: 6,
+              boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
+              padding: 15,
+            }}
+          >
             <div
-              key={post.id}
               style={{
-                marginBottom: 24,
-                paddingBottom: 10,
-                borderBottom: '1px solid #eee',
-                background: '#fff',
-                borderRadius: 6,
-                boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
-                padding: 15,
+                fontWeight: 'bold',
+                color: '#0073b1',
+                marginBottom: 6,
+                fontSize: '1rem',
               }}
             >
-              <div
-                style={{
-                  fontWeight: 'bold',
-                  color: '#0073b1',
-                  marginBottom: 6,
-                  fontSize: '1rem',
-                }}
-              >
-                {post.name} - <span style={{ fontWeight: 'normal', color: '#555' }}>{timeAgo(post.created_at)}</span>
-              </div>
-              <div style={{ whiteSpace: 'pre-wrap', fontSize: '0.95rem', color: '#333' }}>
-                {`"${post.content}"`}
-              </div>
+              {post.name} - <span style={{ fontWeight: 'normal', color: '#555' }}>{timeAgo(post.created_at)}</span>
             </div>
-          ))
-        )}
+            <div style={{ whiteSpace: 'pre-wrap', fontSize: '0.95rem', color: '#333' }}>
+              {`"${post.content}"`}
+            </div>
+          </div>
+        ))}
       </section>
 
       {/* View Profile Button */}
       <div style={{ marginTop: 30, textAlign: 'center' }}>
         {user ? (
           <Link
-            href={`/profile/${user.id || ''}`} // user ID needed here, fallback to empty string
+            href={`/profile/${user.id || ''}`}
             style={{
               display: 'inline-block',
               padding: '10px 20px',

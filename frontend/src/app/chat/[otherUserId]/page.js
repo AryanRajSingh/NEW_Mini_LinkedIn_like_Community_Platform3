@@ -5,9 +5,10 @@ import MessagesList from '../../../components/MessagesList';
 import MessageForm from '../../../components/MessageForm';
 
 export default function ChatPage({ params }) {
-  // params.otherUserId from route segment
+  // params.otherUserId is from the route segment
   const otherUserId = params.otherUserId;
 
+  // SSR-safe: UseEffect if you want to access localStorage safely, but for simplicity, keep as is for client components
   const currentUser = typeof window !== 'undefined'
     ? JSON.parse(localStorage.getItem('user') || 'null')
     : null;

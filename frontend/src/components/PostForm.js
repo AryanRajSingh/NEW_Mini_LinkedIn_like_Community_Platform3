@@ -2,11 +2,9 @@
 
 import { useState, useRef } from 'react';
 import axios from 'axios';
-
-// You can install emoji-picker-react or any similar package: npm install emoji-picker-react
 import dynamic from 'next/dynamic';
 
-// Lazy load the emoji picker as it uses window/document
+// Lazy-load emoji picker for SSR compatibility
 const Picker = dynamic(() => import('emoji-picker-react'), { ssr: false });
 
 export default function PostForm({ onPostCreated }) {
@@ -14,34 +12,39 @@ export default function PostForm({ onPostCreated }) {
   const [loading, setLoading] = useState(false);
   const [media, setMedia] = useState(null); // file object
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [error, setError] = useState(null);
   const fileInputRef = useRef(null);
 
   const maxChars = 300;
 
-  // Handle content change, allowing maxChars
+  // Use backend URL from .env or fallback to localhost
+  const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
+
+  // Handle content input change
   const handleChange = (e) => {
     if (e.target.value.length <= maxChars) {
       setContent(e.target.value);
     }
   };
 
-  // Handle Emoji click
-  const onEmojiClick = (event, emojiObject) => {
-    if (content.length + emojiObject.emoji.length <= maxChars) {
-      setContent((prev) => prev + emojiObject.emoji);
+  // Handle emoji selected
+  const onEmojiClick = (emojiObject) => {
+    const emoji = emojiObject?.emoji || '';
+    if (content.length + emoji.length <= maxChars) {
+      setContent((prev) => prev + emoji);
     }
   };
 
-  // Handle media selection
+  // Handle media file input change
   const handleMediaChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      // Basic validation for image/video types
       if (!file.type.startsWith('image/') && !file.type.startsWith('video/')) {
-        alert('Please select an image or video file only.');
+        setError('Please select an image or video file only.');
         return;
       }
       setMedia(file);
+      setError(null);
     }
   };
 
@@ -53,59 +56,79 @@ export default function PostForm({ onPostCreated }) {
     }
   };
 
+  // Submit post
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError(null);
 
     if (!content.trim() && !media) {
-      alert('Please enter some text or attach media to post.');
+      setError('Please enter some text or attach media to post.');
       return;
     }
 
     const token = localStorage.getItem('token');
     if (!token) {
-      alert('You must be logged in to post.');
+      setError('You must be logged in to post.');
       return;
     }
 
     setLoading(true);
 
     try {
-      // Prepare form data for media upload together with content
       const formData = new FormData();
       formData.append('content', content.trim());
       if (media) {
         formData.append('media', media);
       }
 
-      await axios.post('http://localhost:5000/posts', formData, {
+      await axios.post(`${API_BASE}/posts`, formData, {
         headers: {
           Authorization: `Bearer ${token}`,
-          // 'Content-Type': 'multipart/form-data',
+          // Let browser set Content-Type for multipart formData
         },
       });
 
       setContent('');
       removeMedia();
       setShowEmojiPicker(false);
-      onPostCreated();
-    } catch (error) {
-      alert('Error posting. Please try again.');
-      console.error(error);
+      if (onPostCreated) onPostCreated();
+    } catch (err) {
+      setError('Error posting. Please try again.');
+      console.error(err);
     } finally {
       setLoading(false);
     }
   };
 
-  // Preview media (image or video)
+  // Media preview (image or video)
   const renderMediaPreview = () => {
     if (!media) return null;
 
     if (media.type.startsWith('image/')) {
-      return <img src={URL.createObjectURL(media)} alt="preview" style={{ maxWidth: '100%', maxHeight: 200, borderRadius: 6, marginTop: 10 }} />;
+      return (
+        <img
+          src={URL.createObjectURL(media)}
+          alt="preview"
+          style={{
+            maxWidth: '100%',
+            maxHeight: 200,
+            borderRadius: 6,
+            marginTop: 10,
+          }}
+        />
+      );
     }
     if (media.type.startsWith('video/')) {
       return (
-        <video controls style={{ maxWidth: '100%', maxHeight: 200, borderRadius: 6, marginTop: 10 }}>
+        <video
+          controls
+          style={{
+            maxWidth: '100%',
+            maxHeight: 200,
+            borderRadius: 6,
+            marginTop: 10,
+          }}
+        >
           <source src={URL.createObjectURL(media)} type={media.type} />
           Your browser does not support the video tag.
         </video>
@@ -148,10 +171,10 @@ export default function PostForm({ onPostCreated }) {
         <div>{content.length} / {maxChars}</div>
 
         <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-          {/* Image upload button */}
-          {/* <button
+          {/* Image/Video upload button */}
+          <button
             type="button"
-            onClick={() => fileInputRef.current.click()}
+            onClick={() => fileInputRef.current && fileInputRef.current.click()}
             disabled={loading}
             title="Attach Image or Video"
             style={{
@@ -164,10 +187,10 @@ export default function PostForm({ onPostCreated }) {
             aria-label="Attach Image or Video"
           >
             📎
-          </button> */}
+          </button>
 
-          {/* Emoji picker button */}
-          {/* <button
+          {/* Emoji picker toggle button */}
+          <button
             type="button"
             onClick={() => setShowEmojiPicker((prev) => !prev)}
             disabled={loading}
@@ -182,7 +205,7 @@ export default function PostForm({ onPostCreated }) {
             aria-label="Add Emoji"
           >
             😊
-          </button> */}
+          </button>
         </div>
       </div>
 
@@ -247,6 +270,8 @@ export default function PostForm({ onPostCreated }) {
       >
         {loading ? 'Posting...' : 'Post'}
       </button>
+
+      {error && <div style={{ color: 'red', marginTop: 10 }}>{error}</div>}
     </form>
   );
 }
