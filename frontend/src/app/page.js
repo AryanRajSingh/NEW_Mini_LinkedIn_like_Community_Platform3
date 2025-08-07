@@ -32,15 +32,15 @@ export default function Home() {
 
   // Fetch posts from backend
   const fetchPosts = async () => {
-    try {
-      setError(null); // Clear previous errors
-      const res = await axios.get(`${API_BASE}/posts`);
-      setPosts(res.data);
-    } catch (err) {
-      console.error('Error fetching posts:', err);
-      setError('Failed to load posts.');
-    }
-  };
+  try {
+    setError(null);
+    const res = await axios.get(`${API_BASE}/posts`);
+    setPosts(res.data);
+  } catch (err) {
+    console.error('Error fetching posts:', err);
+    setError('Failed to load posts.');
+  }
+};
 
   // Fetch logged-in user info based on token or localStorage
   const fetchUserInfo = (token) => {
