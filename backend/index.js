@@ -1,8 +1,8 @@
+require('dotenv').config();
+
 const express = require('express');
 const cors = require('cors');
-const bodyParser = require('body-parser');
 const path = require('path');
-require('dotenv').config();
 
 const app = express();
 
@@ -10,18 +10,37 @@ const app = express();
 const authRouter = require('./routes/auth');
 const usersRouter = require('./routes/users');
 const postsRouter = require('./routes/posts');
-const commentsRouter = require('./routes/comments'); // if you have comments route
+const commentsRouter = require('./routes/comments'); // or conditionally require if optional
 const notificationsRouter = require('./routes/notifications');
 const messagesRouter = require('./routes/messages');
 const friendRequestsRouter = require('./routes/friendRequests');
 const adminAuthRouter = require('./routes/adminAuth');
 const adminRouter = require('./routes/admin');
 
-
-
 // Middleware
-app.use(cors());
-app.use(bodyParser.json());
+
+// Configure CORS only once, add your frontend URLs here:
+const allowedOrigins = [
+  'http://localhost:3000', // Local dev frontend URL
+  'https://your-deployed-frontend-url.vercel.app' // Replace with your real production frontend URL
+];
+
+app.use(cors({
+  origin: function(origin, callback){
+    // allow requests with no origin (like mobile apps or curl requests)
+    if(!origin) return callback(null, true);
+
+    if(allowedOrigins.indexOf(origin) === -1){
+      const msg = `The CORS policy for this site does not allow access from the specified Origin: ${origin}`;
+      return callback(new Error(msg), false);
+    }
+    return callback(null, true);
+  },
+  credentials: true
+}));
+
+// Parse JSON bodies (replacement for body-parser)
+app.use(express.json());
 
 // Serve uploads folder statically for media files
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
@@ -35,17 +54,25 @@ app.use('/messages', messagesRouter);
 app.use('/auth', authRouter);
 app.use('/users', usersRouter);
 app.use('/posts', postsRouter);
+
+// Conditionally use comments route only if defined
 if (commentsRouter) {
   app.use('/comments', commentsRouter);
 }
-app.use(cors({
-  origin: "http://localhost:3000", 
-  credentials: true
-}));
 
 // Health check route
 app.get('/', (req, res) => {
   res.send('Welcome to Mini LinkedIn API');
+});
+
+// Global error handler for CORS or other errors (optional but helpful)
+app.use((err, req, res, next) => {
+  if (err instanceof Error && err.message.startsWith('The CORS policy')) {
+    return res.status(403).json({ message: err.message });
+  }
+
+  console.error(err);
+  res.status(500).json({ message: 'Server error' });
 });
 
 // Start server
