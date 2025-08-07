@@ -64,7 +64,11 @@ export default function NotificationsPage() {
           <div key={`${comment.commenterId}-${comment.post_id}-${comment.commentedAt}`} style={{borderBottom: '1px solid #ddd', padding: '10px 0'}}>
             <strong>{comment.commenterName}</strong> commented on your post:
             <blockquote style={{ fontStyle: 'italic', margin: '5px 0' }}>{comment.postContent}</blockquote>
-            <p>"{comment.commentText}"</p>
+            {/* FIX: Remove unescaped double quotes */}
+            {/* Option 1: Use &quot; entity */}
+            <p>&quot;{comment.commentText}&quot;</p>
+            {/* Option 2: Use template string (either is OK) */}
+            {/* <p>{`"${comment.commentText}"`}</p> */}
           </div>
         ))}
       </section>

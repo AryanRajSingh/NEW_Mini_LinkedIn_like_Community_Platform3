@@ -159,7 +159,7 @@ export default function Home() {
                 {post.name} - <span style={{ fontWeight: 'normal', color: '#555' }}>{timeAgo(post.created_at)}</span>
               </div>
               <div style={{ whiteSpace: 'pre-wrap', fontSize: '0.95rem', color: '#333' }}>
-                "{post.content}"
+                {`"${post.content}"`}
               </div>
             </div>
           ))
