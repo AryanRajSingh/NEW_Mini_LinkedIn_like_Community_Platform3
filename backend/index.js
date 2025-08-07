@@ -21,22 +21,22 @@ const adminRouter = require('./routes/admin');
 
 // Configure CORS only once, add your frontend URLs here:
 const allowedOrigins = [
-  'http://localhost:3000', // Local dev frontend URL
-  'https://your-deployed-frontend-url.vercel.app' // Replace with your real production frontend URL
-];
+  'http://localhost:3000', // for local testing
+  process.env.FRONTEND_URL  // frontend URL from .env
+].filter(Boolean); // filter removes undefined if FRONTEND_URL is empty
+
 
 app.use(cors({
   origin: function(origin, callback){
-    // allow requests with no origin (like mobile apps or curl requests)
-    if(!origin) return callback(null, true);
+    if (!origin) return callback(null, true);
 
-    if(allowedOrigins.indexOf(origin) === -1){
-      const msg = `The CORS policy for this site does not allow access from the specified Origin: ${origin}`;
+    if (allowedOrigins.indexOf(origin) === -1) {
+      const msg = `The CORS policy for this site does not allow access from Origin: ${origin}`;
       return callback(new Error(msg), false);
     }
     return callback(null, true);
   },
-  credentials: true
+  credentials: true,
 }));
 
 // Parse JSON bodies (replacement for body-parser)
