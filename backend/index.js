@@ -22,7 +22,7 @@ const adminRouter = require('./routes/admin');
 // Configure CORS only once, add your frontend URLs here:
 const allowedOrigins = [
   'http://localhost:3000',
-  'https://frontend-mini-linkedin-like-community-platform-fdm0nn995.vercel.app',
+  'https://frontend-mini-linkedin-like-community-platform-1pjnjjduf.vercel.app',
   process.env.FRONTEND_URL  // frontend URL from .env
 ].filter(Boolean); // filter removes undefined if FRONTEND_URL is empty
 
